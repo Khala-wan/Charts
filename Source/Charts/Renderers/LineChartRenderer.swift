@@ -21,6 +21,8 @@ open class LineChartRenderer: LineRadarRenderer
 {
     @objc open weak var dataProvider: LineChartDataProvider?
     
+    @objc open var linePath: UIBezierPath!
+    
     @objc public init(dataProvider: LineChartDataProvider, animator: Animator, viewPortHandler: ViewPortHandler)
     {
         super.init(animator: animator, viewPortHandler: viewPortHandler)
@@ -101,7 +103,6 @@ open class LineChartRenderer: LineRadarRenderer
         
         // the path for the cubic-spline
         let cubicPath = CGMutablePath()
-        
         let valueToPixelMatrix = trans.valueToPixelMatrix
         
         if _xBounds.range >= 1
@@ -124,11 +125,10 @@ open class LineChartRenderer: LineRadarRenderer
             var cur: ChartDataEntry! = dataSet.entryForIndex(max(firstIndex - 1, 0))
             var next: ChartDataEntry! = cur
             var nextIndex: Int = -1
-            
             if cur == nil { return }
-            
             // let the spline start
-            cubicPath.move(to: CGPoint(x: CGFloat(cur.x), y: CGFloat(cur.y * phaseY)), transform: valueToPixelMatrix)
+            let startPoint: CGPoint = CGPoint(x: CGFloat(cur.x), y: CGFloat(cur.y * phaseY))
+            cubicPath.move(to: startPoint, transform: valueToPixelMatrix)
             
             for j in stride(from: firstIndex, through: lastIndex, by: 1)
             {
@@ -159,7 +159,7 @@ open class LineChartRenderer: LineRadarRenderer
                     transform: valueToPixelMatrix)
             }
         }
-        
+        linePath = UIBezierPath(cgPath: cubicPath)
         context.saveGState()
         
         if dataSet.isDrawFilledEnabled
@@ -169,13 +169,82 @@ open class LineChartRenderer: LineRadarRenderer
             
             drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
         }
-        
         context.beginPath()
         context.addPath(cubicPath)
         context.setStrokeColor(drawingColor.cgColor)
         context.strokePath()
         
         context.restoreGState()
+    }
+    
+    @objc open func getAllPath()-> UIBezierPath?
+    {
+        
+        guard let dataProvider = dataProvider else { return nil }
+        guard let lineData = dataProvider.lineData, let dataSet = lineData.getDataSetByIndex(0) as? ILineChartDataSet else { return nil }
+        let trans = dataProvider.getTransformer(forAxis: dataSet.axisDependency)
+        
+        
+        let phaseY = animator.phaseY
+        
+        _xBounds.set(chart: dataProvider, dataSet: dataSet, animator: animator)
+        
+        // the path for the cubic-spline
+        let cubicPath = CGMutablePath()
+        let valueToPixelMatrix = trans.valueToPixelMatrix
+        let intensity = dataSet.cubicIntensity
+        
+        if _xBounds.range >= 1
+        {
+            var prevDx: CGFloat = 0.0
+            var prevDy: CGFloat = 0.0
+            var curDx: CGFloat = 0.0
+            var curDy: CGFloat = 0.0
+            
+            let firstIndex = _xBounds.min + 1
+            let lastIndex = _xBounds.max
+            
+            var prevPrev: ChartDataEntry! = nil
+            var prev: ChartDataEntry! = dataSet.entryForIndex(max(firstIndex - 2, 0))
+            var cur: ChartDataEntry! = dataSet.entryForIndex(max(firstIndex - 1, 0))
+            var next: ChartDataEntry! = cur
+            var nextIndex: Int = -1
+
+            if cur == nil { return nil }
+            // let the spline start
+            let startPoint: CGPoint = CGPoint(x: CGFloat(cur.x), y: CGFloat(cur.y * phaseY))
+            cubicPath.move(to: startPoint, transform: valueToPixelMatrix)
+            
+            for j in stride(from: firstIndex, through: lastIndex, by: 1)
+            {
+                prevPrev = prev
+                prev = cur
+                cur = nextIndex == j ? next : dataSet.entryForIndex(j)
+                
+                nextIndex = j + 1 < dataSet.entryCount ? j + 1 : j
+                next = dataSet.entryForIndex(nextIndex)
+                
+                if next == nil { break }
+                
+                prevDx = CGFloat(cur.x - prevPrev.x) * intensity
+                prevDy = CGFloat(cur.y - prevPrev.y) * intensity
+                curDx = CGFloat(next.x - prev.x) * intensity
+                curDy = CGFloat(next.y - prev.y) * intensity
+                
+                cubicPath.addCurve(
+                    to: CGPoint(
+                        x: CGFloat(cur.x),
+                        y: CGFloat(cur.y) * CGFloat(phaseY)),
+                    control1: CGPoint(
+                        x: CGFloat(prev.x) + prevDx,
+                        y: (CGFloat(prev.y) + prevDy) * CGFloat(phaseY)),
+                    control2: CGPoint(
+                        x: CGFloat(cur.x) - curDx,
+                        y: (CGFloat(cur.y) - curDy) * CGFloat(phaseY)),
+                    transform: valueToPixelMatrix)
+            }
+        }
+        return UIBezierPath(cgPath: cubicPath)
     }
     
     @objc open func drawHorizontalBezier(context: CGContext, dataSet: ILineChartDataSet)
@@ -193,6 +262,7 @@ open class LineChartRenderer: LineRadarRenderer
         
         // the path for the cubic-spline
         let cubicPath = CGMutablePath()
+        let linePath = CGMutablePath()
         
         let valueToPixelMatrix = trans.valueToPixelMatrix
         
@@ -205,6 +275,7 @@ open class LineChartRenderer: LineRadarRenderer
             
             // let the spline start
             cubicPath.move(to: CGPoint(x: CGFloat(cur.x), y: CGFloat(cur.y * phaseY)), transform: valueToPixelMatrix)
+            linePath.move(to: CGPoint(x: CGFloat(cur.x), y: CGFloat(cur.y * phaseY )), transform: valueToPixelMatrix)
             
             for j in stride(from: (_xBounds.min + 1), through: _xBounds.range + _xBounds.min, by: 1)
             {

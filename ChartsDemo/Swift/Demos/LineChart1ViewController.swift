@@ -19,7 +19,7 @@ class LineChart1ViewController: DemoBaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        view.addSubview(iconView)
         // Do any additional setup after loading the view.
         self.title = "Line Chart 1"
         self.options = [.toggleValues,
@@ -139,6 +139,9 @@ class LineChart1ViewController: DemoBaseViewController {
         let data = LineChartData(dataSet: set1)
         
         chartView.data = data
+        chartView.setVisibleXRangeMaximum(10)
+        
+        points = (chartView.renderer as! LineChartRenderer).getAllPath()?.generateLookupTable()
     }
     
     override func optionTapped(_ option: Option) {
@@ -184,4 +187,67 @@ class LineChart1ViewController: DemoBaseViewController {
         
         self.updateChartData()
     }
+    
+    var points: [CGPoint]!
+    
+    func chartTranslatedProgress(_ progress: CGFloat) {
+        DispatchQueue.global().async {
+            let points: [CGPoint] = (self.chartView.renderer as! LineChartRenderer).linePath.generateLookupTable()
+            let currentX: CGFloat = 30 + (self.view.bounds.size.width - 40) * progress
+            let spacingX: CGFloat = points[1].x - points[0].x
+            guard let currentPoint: CGPoint = points.filter({abs($0.x - currentX) <= spacingX}).first else {return}
+            DispatchQueue.main.async {
+                self.iconView.center = currentPoint
+            }
+        }
+    }
+    
+    override func chartValueSelected(_ chartView: ChartViewBase, entry: ChartDataEntry, highlight: Highlight) {
+//        let points: [CGPoint] = (chartView.renderer as! LineChartRenderer).drawPoints.map { (point) -> CGPoint in
+//            var newPoint: CGPoint = point
+//            newPoint.y = self.chartView.contentRect.height - point.y
+//            return newPoint
+//        }
+        let points: [CGPoint] = (chartView.renderer as! LineChartRenderer).linePath.generateLookupTable()
+        
+        
+        let path: UIBezierPath = UIBezierPath()
+        for (index,point) in points.enumerated() {
+            if index == 0 {
+                path.move(to: point)
+            }else {
+                path.addLine(to: point)
+            }
+        }
+        shapeLayer.path = path.cgPath
+        chartView.layer.addSublayer(shapeLayer)
+    }
+    
+    fileprivate lazy var shapeLayer: CAShapeLayer = {
+        let view: CAShapeLayer = CAShapeLayer()
+        view.strokeColor = UIColor.red.cgColor
+//        view.fillColor = UIColor.clear.cgColor
+        view.frame = self.chartView.bounds
+        view.backgroundColor = UIColor.clear.cgColor
+        view.strokeEnd = 0
+        return view
+    }()
+    
+    fileprivate lazy var anima: CAKeyframeAnimation = {
+        let view: CAKeyframeAnimation = CAKeyframeAnimation()
+        view.delegate = self
+        view.keyPath = "postion"
+        view.duration = 5
+        return view
+    }()
+    
+    fileprivate lazy var iconView: UIImageView = {
+        let view: UIImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: 20, height: 20))
+        view.image = #imageLiteral(resourceName: "icon")
+        return view
+    }()
+}
+
+extension LineChart1ViewController: CAAnimationDelegate {
+    
 }

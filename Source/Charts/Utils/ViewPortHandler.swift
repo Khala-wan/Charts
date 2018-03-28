@@ -258,13 +258,17 @@ open class ViewPortHandler: NSObject
     @objc @discardableResult open func refresh(newMatrix: CGAffineTransform, chart: ChartViewBase, invalidate: Bool) -> CGAffineTransform
     {
         _touchMatrix = newMatrix
-        
         // make sure scale and translation are within their bounds
         limitTransAndScale(matrix: &_touchMatrix, content: _contentRect)
         
         chart.setNeedsDisplay()
         
         return _touchMatrix
+    }
+    
+    @objc open func getMaxContentWidth(newMatrix: CGAffineTransform)-> CGFloat {
+        let myScaleX: CGFloat = min(max(_minScaleX, newMatrix.a), _maxScaleX)
+        return abs(-_contentRect.width * (myScaleX - 1.0))
     }
     
     /// limits the maximum scale and X translation of the given matrix
@@ -285,7 +289,6 @@ open class ViewPortHandler: NSObject
             width = content!.width
             height = content!.height
         }
-        
         let maxTransX = -width * (_scaleX - 1.0)
         _transX = min(max(matrix.tx, maxTransX - _transOffsetX), _transOffsetX)
         

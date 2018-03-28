@@ -33,6 +33,10 @@ public protocol ChartViewDelegate
     
     // Callbacks when the chart is moved / translated via drag gesture.
     @objc optional func chartTranslated(_ chartView: ChartViewBase, dX: CGFloat, dY: CGFloat)
+    
+    @objc optional func chartTranslated(_ index: Int)
+    
+    @objc optional func chartTranslatedProgress(_ progress: CGFloat)
 }
 
 open class ChartViewBase: NSUIView, ChartDataProvider, AnimatorDelegate

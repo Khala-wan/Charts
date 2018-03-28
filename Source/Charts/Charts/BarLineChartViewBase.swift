@@ -785,7 +785,6 @@ open class BarLineChartViewBase: ChartViewBase, BarLineScatterCandleBubbleChartD
     private func performPanChange(translation: CGPoint) -> Bool
     {
         var translation = translation
-        
         if isTouchInverted()
         {
             if self is HorizontalBarChartView
@@ -804,10 +803,15 @@ open class BarLineChartViewBase: ChartViewBase, BarLineScatterCandleBubbleChartD
         matrix = originalMatrix.concatenating(matrix)
         
         matrix = _viewPortHandler.refresh(newMatrix: matrix, chart: self, invalidate: true)
-        
+        let maxContentWidth: CGFloat = _viewPortHandler.getMaxContentWidth(newMatrix: matrix)
         if delegate !== nil
         {
             delegate?.chartTranslated?(self, dX: translation.x, dY: translation.y)
+            let percent: CGFloat = abs(originalMatrix.tx)/maxContentWidth
+            let maxCount: CGFloat = CGFloat(data?._dataSets.first?.entryCount ?? 0)
+            let index: Int = Int(percent * maxCount)
+            delegate?.chartTranslated?(index)
+            delegate?.chartTranslatedProgress?(percent)
         }
         
         // Did we managed to actually drag or did we reach the edge?
