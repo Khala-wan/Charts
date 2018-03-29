@@ -222,7 +222,7 @@ open class BarLineChartViewBase: ChartViewBase, BarLineScatterCandleBubbleChartD
         context.saveGState()
         context.clip(to: _viewPortHandler.contentRect)
         renderer.drawData(context: context)
-        
+        delegate?.chartDidRenderComplete?()
         // if highlighting is enabled
         if (valuesToHighlight())
         {

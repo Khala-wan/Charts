@@ -37,6 +37,8 @@ public protocol ChartViewDelegate
     @objc optional func chartTranslated(_ index: Int)
     
     @objc optional func chartTranslatedProgress(_ progress: CGFloat)
+    
+    @objc optional func chartDidRenderComplete()
 }
 
 open class ChartViewBase: NSUIView, ChartDataProvider, AnimatorDelegate
